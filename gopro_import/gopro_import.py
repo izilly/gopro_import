@@ -6,6 +6,7 @@
 #  The full license is in the file LICENSE, distributed with this software.
 
 import sys
+import argparse
 import os
 import subprocess
 from datetime import datetime
@@ -43,9 +44,10 @@ class GoproRecord(object):
 
 
 class GoproVid(GoproRecord):
-    def __init__(self, path, outname=None, outdir=None):
+    def __init__(self, path, options, outname=None, outdir=None):
         self.is_chaptered = False
         self.path = path
+        self.options = options
         self.outdir = outdir
         self.outname = outname
         self._dir, self.filename = os.path.split(self.path)
@@ -140,11 +142,76 @@ class GoproVid(GoproRecord):
             shutil.copy2(self.path, self.outfile)
 
 
+def get_infiles(options, exts=['.MP4']):
+    paths = options.infiles
+    infiles = []
+    indirs = []
+    for p in paths:
+        if os.path.isdir(p):
+            indirs.append(p)
+        else:
+            infiles.append(p)
+    
+    for i in indirs:
+        files = [os.path.join(i,f) for f in os.listdir(i)]
+        mediafiles = [f for f in files for e in exts 
+                      if os.path.splitext(f)[1] == e
+                      and not os.path.basename(f).startswith('GP')]
+        infiles.extend(mediafiles)
+
+    if options.mask:
+        infiles = [i for i in infiles if re.search(options.mask, i)]
+    
+    if options.range:
+        idxs = options.range.split('-')
+        rng = range(int(idxs[0]), int(idxs[1])+1)
+        infiles = [i for i in infiles 
+                   if int(os.path.splitext(i)[0][-4:]) in rng]
+        
+    
+    return infiles
+
+
+def get_options():
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument('infiles', nargs='+', metavar='INFILE',
+                            help="""List of paths to import.  
+                                    %(metavar)s can be a file or a directory.
+                                    """)
+    
+    parser.add_argument('-o', '--output-dir', metavar='OUTDIR',
+                            help="""Path of the directory into which files 
+                                    will be imported.""")
+
+    parser.add_argument('-m', '--mask', metavar='REGEXP',
+                            help="""Input filename mask, a python regular
+                                    expression.""")
+
+    parser.add_argument('-r', '--range', metavar='N-N',
+                            help="""Range of file numbers to import,
+                                    separated by a hyphen ('-').
+                                    e.g., "--range 0001-0002" would import
+                                    GOPR0001.MP4 and GOPR0002.MP4 (if they exist""")
+
+    #~ options = vars(parser.parse_args())
+    options = parser.parse_args()
+    return options
+
+
 def main():
-    paths = sys.argv[1:]
-    for i in paths:
+    options = get_options()
+    infiles = get_infiles(options)
+    
+    for i in infiles:
         v = GoproVid(i)
         v.import_record()
+    
+    
+    #paths = sys.argv[1:]
+    #for i in paths:
+        #v = GoproVid(i)
+        #v.import_record()
     return 0
 
 if __name__ == '__main__':
