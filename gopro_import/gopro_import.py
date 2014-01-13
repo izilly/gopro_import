@@ -44,9 +44,11 @@ class GoproRecord(object):
 
 
 class GoproVid(GoproRecord):
-    def __init__(self, path, options, outname=None, outdir=None):
+    def __init__(self, path, options, outname=None, outdir=None, 
+                 existing_nums=[]):
         self.is_chaptered = False
         self.path = path
+        self.existing_nums = existing_nums
         self.date_time  = None
         self.options = options
         self.outdir = outdir
@@ -57,22 +59,11 @@ class GoproVid(GoproRecord):
         self.num = self.name[-4:]
         self.get_chapters()
         self.get_outfile()
-        #~ self.get_date_time()
-        #~ self.get_chaps()
-        #~ self.import_record()
-    
-    def get_names(self, path):
-        _dir, filename = os.path.split(path)
-        name, ext = os.path.splitext(filename)
-        ext = ext.lstrip('.')
-        #~ num = name.lstrip('GOPR')
-        num = name[-4:]
     
     def get_chapters(self):
         self.chapters = sorted([os.path.join(self._dir,i) for i in 
-                           os.listdir(self._dir) 
-                           if i.endswith('{}.{}'.format(self.num, self.ext))])
-        #~ self.chapters = [self] + [GoproVid(i, self.options) for i in chap_paths[1:]]
+                                os.listdir(self._dir) if
+                                i.endswith('{}.{}'.format(self.num, self.ext))])
         if len(self.chapters) > 1:
             self.is_chaptered = True
     
@@ -114,22 +105,7 @@ class GoproVid(GoproRecord):
             date_time = None
         return date_time
     
-    def cat_chaps(self, force=False):
-        if force or self.is_chaptered:
-            #~ self.write_chap_list()
-            self.unchaptered = self.ffmpeg_cat_chaps()
-        else:
-            self.unchaptered = self.path
-            return self.unchaptered
-    
-    #def write_chap_list(self):
-        #tmpdir = tempfile.gettempdir()
-        #self.chap_list = os.path.join(tmpdir, 'gopro.{}.chaps'.format(self.name))
-        #with open(self.chap_list, 'w') as f:
-            #for i in self.chap_files:
-                #f.write("file '{}'\n".format(i))
-    
-    def ffmpeg_cat_chaps(self, encode=False):
+    def ffmpeg_cat_chapters(self, encode=False):
         # write paths to chapter files in a temp file
         tmpdir = tempfile.gettempdir()
         self.chap_list = os.path.join(tmpdir, 'gopro.{}.chaps'.format(self.name))
@@ -163,18 +139,17 @@ class GoproVid(GoproRecord):
                                                    len(self.chapters)-1)
             else:
                 orig_name = self.name
-            
             self.outname = 'gopro.{}.{}.{}'.format(date, orig_name, self.ext.lower())
         if self.outdir is None:
             self.outdir = os.getcwd()
         self.outfile = os.path.join(self.outdir, self.outname)
     
     def import_record(self):
-        if self.options.encode or self.is_chaptered:
-            #~ self.cat_chaps()
-            self.ffmpeg_cat_chaps(encode=self.options.encode)
-        else:
-            shutil.copy2(self.path, self.outfile)
+        if self.num not in self.existing_nums:
+            if self.options.encode or self.is_chaptered:
+                self.ffmpeg_cat_chapters(encode=self.options.encode)
+            else:
+                shutil.copy2(self.path, self.outfile)
 
 
 def get_infiles(options, exts=['.MP4']):
@@ -202,9 +177,13 @@ def get_infiles(options, exts=['.MP4']):
         rng = range(int(idxs[0]), int(idxs[-1])+1)
         infiles = [i for i in infiles 
                    if int(os.path.splitext(i)[0][-4:]) in rng]
-        
-    
     return infiles
+
+def find_existing(outdir, num_prefix='GOPR'):
+    existing_nums = [i.split(num_prefix)[1][:4]
+                     for i in os.listdir(outdir) 
+                     if i.count(num_prefix)]
+    return existing_nums
 
 
 def get_options():
@@ -215,7 +194,7 @@ def get_options():
                                     %(metavar)s can be a file or a directory.
                                     """)
     
-    parser.add_argument('-o', '--output-dir', metavar='OUTDIR',
+    parser.add_argument('-o', '--output-dir', metavar='OUTDIR', default='.',
                             help="""Path of the directory into which files 
                                     will be imported.""")
 
@@ -240,9 +219,10 @@ def get_options():
 def main():
     options = get_options()
     infiles = get_infiles(options)
+    existing_nums = find_existing(options.output_dir)
     
     for i in infiles:
-        v = GoproVid(i, options)
+        v = GoproVid(i, options, existing_nums=existing_nums)
         v.import_record()
     
     
