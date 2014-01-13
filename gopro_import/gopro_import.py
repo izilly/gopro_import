@@ -104,28 +104,43 @@ class GoproVid(GoproRecord):
             date_time = None
         return date_time
     
-    def cat_chaps(self):
-        if self.is_chaptered:
-            self.write_chap_list()
+    def cat_chaps(self, force=False):
+        if force or self.is_chaptered:
+            #~ self.write_chap_list()
             self.unchaptered = self.ffmpeg_cat_chaps()
         else:
             self.unchaptered = self.path
             return self.unchaptered
     
-    def write_chap_list(self):
+    #def write_chap_list(self):
+        #tmpdir = tempfile.gettempdir()
+        #self.chap_list = os.path.join(tmpdir, 'gopro.{}.chaps'.format(self.name))
+        #with open(self.chap_list, 'w') as f:
+            #for i in self.chap_files:
+                #f.write("file '{}'\n".format(i))
+    
+    def ffmpeg_cat_chaps(self, encode=False):
+        # write paths to chapter files in a temp file
         tmpdir = tempfile.gettempdir()
         self.chap_list = os.path.join(tmpdir, 'gopro.{}.chaps'.format(self.name))
         with open(self.chap_list, 'w') as f:
             for i in self.chap_files:
                 f.write("file '{}'\n".format(i))
-    
-    def ffmpeg_cat_chaps(self):
-        args = ['ffmpeg',
-                '-f', 'concat',
-                '-i', self.chap_list,
-                '-c', 'copy',
-                self.outfile]
-        o = subprocess.check_call(args)
+        # cat chapters and/or reencode the video with ffmpeg
+        args = ['-f', 'concat',
+                '-i', self.chap_list]
+                #~ '-c', 'copy']
+        if encode:
+            args.extend(['-c:v', 'libx264',
+                         '-preset', 'fast', 
+                         '-crf', '27', 
+                         '-vf', 'scale=-1:720', 
+                         '-movflags', '+faststart',
+                         '-c:a', 'copy'])
+        else:
+            args.extend(['-c', 'copy'])
+        cmd = ['ffmpeg'] + args + [self.outfile]
+        o = subprocess.check_call(cmd)
         return self.outfile
     
     def get_outfile(self):
@@ -136,8 +151,9 @@ class GoproVid(GoproRecord):
         self.outfile = os.path.join(self.outdir, self.outname)
     
     def import_record(self):
-        if self.is_chaptered:
-            self.cat_chaps()
+        if self.options.encode or self.is_chaptered:
+            #~ self.cat_chaps()
+            self.ffmpeg_cat_chaps(encode=self.options.encode)
         else:
             shutil.copy2(self.path, self.outfile)
 
@@ -194,6 +210,9 @@ def get_options():
                                     e.g., "--range 0001-0002" would import
                                     GOPR0001.MP4 and GOPR0002.MP4 (if they exist""")
 
+    parser.add_argument('-e', '--encode', action='store_true',
+                            help="""re-encode video files with ffmpeg""")
+
     #~ options = vars(parser.parse_args())
     options = parser.parse_args()
     return options
@@ -204,7 +223,7 @@ def main():
     infiles = get_infiles(options)
     
     for i in infiles:
-        v = GoproVid(i)
+        v = GoproVid(i, options)
         v.import_record()
     
     
