@@ -25,6 +25,8 @@ TAGS_EXIFTOOL_MAP = {'DateTimeOriginal' : 'DateTimeOriginal',
 TAGS_EXIFTOOL = [TAGS_EXIFTOOL_MAP[i.split('.')[-1]] for i in TAGS_DATE]
 
 TAGS_DATE_FMT = '%Y:%m:%d %H:%M:%S'
+FF_TAGS_DATE_FMT = '%Y-%m-%dT%H:%M:%S'
+#~ TAGS_DATE_FMT = '%Y:%m:%dT%H:%M:%S'
 TAGS_UTC = ['quicktime']
 
 # re patterns for parsing date from metadata
@@ -46,13 +48,17 @@ class GoproRecord(object):
 class GoproVid(GoproRecord):
     def __init__(self, path, options, outname=None, outdir=None, 
                  existing_nums=[]):
-        self.is_chaptered = False
         self.path = path
-        self.existing_nums = existing_nums
-        self.date_time  = None
         self.options = options
-        self.outdir = outdir
         self.outname = outname
+        #~ self.outname = options.outname if options.outname else outname
+        self.outdir = options.outdir if options.outdir else outdir
+        self.existing_nums = existing_nums
+        self.imported_path = None
+        self.is_chaptered = False
+        self.date_time  = None
+        #~ self.outdir = outdir
+        #~ self.outname = outname
         self._dir, self.filename = os.path.split(self.path)
         self.name, self.ext = os.path.splitext(self.filename)
         self.ext = self.ext.lstrip('.')
@@ -126,7 +132,7 @@ class GoproVid(GoproRecord):
         else:
             args.extend(['-c', 'copy'])
         args.extend(['-metadata', 
-            'creation_time="{}"'.format(self.date_time.strftime(TAGS_DATE_FMT))])
+            'creation_time={}'.format(self.date_time.strftime(FF_TAGS_DATE_FMT))])
         cmd = ['ffmpeg'] + args + [self.outfile]
         o = subprocess.check_call(cmd)
         return self.outfile
@@ -146,12 +152,20 @@ class GoproVid(GoproRecord):
             self.outdir = os.getcwd()
         self.outfile = os.path.join(self.outdir, self.outname)
     
-    def import_record(self):
+    def import_record(self, update_timestamps=True):
         if self.num not in self.existing_nums:
             if self.options.encode or self.is_chaptered:
                 self.ffmpeg_cat_chapters(encode=self.options.encode)
             else:
                 shutil.copy2(self.path, self.outfile)
+        self.imported_path = self.outfile
+        if update_timestamps:
+            self.update_file_timestamps()
+    
+    def update_file_timestamps(self):
+        if self.date_time:
+            ts = self.date_time.timestamp()
+            os.utime(self.imported_path, (ts, ts))
 
 
 def get_infiles(options, exts=['.MP4']):
@@ -197,6 +211,7 @@ def get_options():
                                     """)
     
     parser.add_argument('-o', '--output-dir', metavar='OUTDIR', default='.',
+                            dest='outdir',
                             help="""Path of the directory into which files 
                                     will be imported.""")
 
@@ -221,7 +236,7 @@ def get_options():
 def main():
     options = get_options()
     infiles = get_infiles(options)
-    existing_nums = find_existing(options.output_dir)
+    existing_nums = find_existing(options.outdir)
     
     for i in infiles:
         v = GoproVid(i, options, existing_nums=existing_nums)
