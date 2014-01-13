@@ -47,23 +47,33 @@ class GoproVid(GoproRecord):
     def __init__(self, path, options, outname=None, outdir=None):
         self.is_chaptered = False
         self.path = path
+        self.date_time  = None
         self.options = options
         self.outdir = outdir
         self.outname = outname
         self._dir, self.filename = os.path.split(self.path)
         self.name, self.ext = os.path.splitext(self.filename)
         self.ext = self.ext.lstrip('.')
-        self.num = self.name.lstrip('GOPR')
-        self.get_date_time()
+        self.num = self.name[-4:]
+        self.get_chapters()
         self.get_outfile()
-        self.get_chaps()
+        #~ self.get_date_time()
+        #~ self.get_chaps()
         #~ self.import_record()
     
-    def get_chaps(self):
-        self.chap_files = sorted([os.path.join(self._dir,i) for i in 
+    def get_names(self, path):
+        _dir, filename = os.path.split(path)
+        name, ext = os.path.splitext(filename)
+        ext = ext.lstrip('.')
+        #~ num = name.lstrip('GOPR')
+        num = name[-4:]
+    
+    def get_chapters(self):
+        self.chapters = sorted([os.path.join(self._dir,i) for i in 
                            os.listdir(self._dir) 
                            if i.endswith('{}.{}'.format(self.num, self.ext))])
-        if len(self.chap_files) > 1:
+        #~ self.chapters = [self] + [GoproVid(i, self.options) for i in chap_paths[1:]]
+        if len(self.chapters) > 1:
             self.is_chaptered = True
     
     def get_exiftool_date(self):
@@ -124,7 +134,7 @@ class GoproVid(GoproRecord):
         tmpdir = tempfile.gettempdir()
         self.chap_list = os.path.join(tmpdir, 'gopro.{}.chaps'.format(self.name))
         with open(self.chap_list, 'w') as f:
-            for i in self.chap_files:
+            for i in self.chapters:
                 f.write("file '{}'\n".format(i))
         # cat chapters and/or reencode the video with ffmpeg
         args = ['-f', 'concat',
@@ -145,7 +155,16 @@ class GoproVid(GoproRecord):
     
     def get_outfile(self):
         if self.outname is None:
-            self.outname = 'gopro.{:%Y.%m.%d_%H.%M.%S}.{}.{}'.format(self.date_time, self.name, self.ext.lower())
+            if self.date_time is None:
+                self.get_date_time()
+            date = '{:%Y.%m.%d_%H.%M.%S}'.format(self.date_time)
+            if len(self.chapters) > 1:
+                orig_name = '{}.pt00-{:02}'.format(self.name, 
+                                                   len(self.chapters)-1)
+            else:
+                orig_name = self.name
+            
+            self.outname = 'gopro.{}.{}.{}'.format(date, orig_name, self.ext.lower())
         if self.outdir is None:
             self.outdir = os.getcwd()
         self.outfile = os.path.join(self.outdir, self.outname)
@@ -180,7 +199,7 @@ def get_infiles(options, exts=['.MP4']):
     
     if options.range:
         idxs = options.range.split('-')
-        rng = range(int(idxs[0]), int(idxs[1])+1)
+        rng = range(int(idxs[0]), int(idxs[-1])+1)
         infiles = [i for i in infiles 
                    if int(os.path.splitext(i)[0][-4:]) in rng]
         
