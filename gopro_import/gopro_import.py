@@ -125,6 +125,8 @@ class GoproVid(GoproRecord):
                          '-c:a', 'copy'])
         else:
             args.extend(['-c', 'copy'])
+        args.extend(['-metadata', 
+            'creation_time="{}"'.format(self.date_time.strftime(TAGS_DATE_FMT))])
         cmd = ['ffmpeg'] + args + [self.outfile]
         o = subprocess.check_call(cmd)
         return self.outfile
