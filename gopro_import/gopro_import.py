@@ -23,12 +23,9 @@ TAGS_EXIFTOOL_MAP = {'DateTimeOriginal' : 'DateTimeOriginal',
                      'DateTimeDigitized': 'CreateDate',
                      'DateTime'         : 'ModifyDate'}
 TAGS_EXIFTOOL = [TAGS_EXIFTOOL_MAP[i.split('.')[-1]] for i in TAGS_DATE]
-
 TAGS_DATE_FMT = '%Y:%m:%d %H:%M:%S'
 FF_TAGS_DATE_FMT = '%Y-%m-%dT%H:%M:%S'
-#~ TAGS_DATE_FMT = '%Y:%m:%dT%H:%M:%S'
 TAGS_UTC = ['quicktime']
-
 # re patterns for parsing date from metadata
 PAT_SEP=r'[^a-zA-Z0-9]?'
 PAT_DATE = (r'{d4}{s}{d2}{s}{d2}').format(d4=r'(\d{4})', d2=r'(\d{2})', 
@@ -37,7 +34,6 @@ PAT_TIME = (r'{d2}{s}{d2}{s}{d2}').format(d2=r'(\d{2})',
                                           s=PAT_SEP)
 PAT_DATE_TIME = r'{d}{s}{t}'.format(d=PAT_DATE, t=PAT_TIME, s=PAT_SEP)
 RE_DATE_TIME = re.compile(PAT_DATE_TIME)
-
 
 
 class GoproRecord(object):
@@ -51,14 +47,11 @@ class GoproVid(GoproRecord):
         self.path = path
         self.options = options
         self.outname = outname
-        #~ self.outname = options.outname if options.outname else outname
         self.outdir = options.outdir if options.outdir else outdir
         self.existing_nums = existing_nums
         self.imported_path = None
         self.is_chaptered = False
         self.date_time  = None
-        #~ self.outdir = outdir
-        #~ self.outname = outname
         self._dir, self.filename = os.path.split(self.path)
         self.name, self.ext = os.path.splitext(self.filename)
         self.ext = self.ext.lstrip('.')
@@ -69,7 +62,8 @@ class GoproVid(GoproRecord):
     def get_chapters(self):
         self.chapters = sorted([os.path.join(self._dir,i) for i in 
                                 os.listdir(self._dir) if
-                                i.endswith('{}.{}'.format(self.num, self.ext))])
+                                i.endswith('{}.{}'.format(self.num, 
+                                                          self.ext))])
         self.chapter_filenames = [os.path.basename(i) for i in self.chapters]
         if len(self.chapters) > 1:
             self.is_chaptered = True
@@ -112,32 +106,6 @@ class GoproVid(GoproRecord):
             date_time = None
         return date_time
     
-    def ffmpeg_cat_chapters(self, encode=False):
-        # write paths to chapter files in a temp file
-        tmpdir = tempfile.gettempdir()
-        self.chap_list = os.path.join(tmpdir, 'gopro.{}.chaps'.format(self.name))
-        with open(self.chap_list, 'w') as f:
-            for i in self.chapters:
-                f.write("file '{}'\n".format(i))
-        # cat chapters and/or reencode the video with ffmpeg
-        args = ['-f', 'concat',
-                '-i', self.chap_list]
-                #~ '-c', 'copy']
-        if encode:
-            args.extend(['-c:v', 'libx264',
-                         '-preset', 'fast', 
-                         '-crf', '27', 
-                         '-vf', 'scale=-1:720', 
-                         '-movflags', '+faststart',
-                         '-c:a', 'copy'])
-        else:
-            args.extend(['-c', 'copy'])
-        args.extend(['-metadata', 
-            'creation_time={}'.format(self.date_time.strftime(FF_TAGS_DATE_FMT))])
-        cmd = ['ffmpeg'] + args + [self.outfile]
-        o = subprocess.check_call(cmd)
-        return self.outfile
-
     def ffmpeg(self, encode=False):
         args = []
         if self.is_chaptered:
@@ -159,17 +127,16 @@ class GoproVid(GoproRecord):
                          '-c:a', 'copy'])
         else:
             args.extend(['-c', 'copy'])
-        #~ args.extend(['-metadata', 
-            #~ 'creation_time={}'.format(self.date_time.strftime(FF_TAGS_DATE_FMT))])
         cmd = ['ffmpeg'] + args + [self.outfile]
         print('\n\n*** ffmpeg cmd:\n{}\n\n'.format(' '.join(cmd)))
         o = subprocess.check_call(cmd)
         return self.outfile
     
     def write_chapter_file(self):
-        # write paths to chapter files in a temp file
+        # write chapter file paths to a temp file
         tmpdir = tempfile.gettempdir()
-        self.chap_list = os.path.join(tmpdir, 'gopro.{}.chaps'.format(self.name))
+        self.chap_list = os.path.join(tmpdir, 
+                                      'gopro.{}.chaps'.format(self.name))
         with open(self.chap_list, 'w') as f:
             for i in self.chapters:
                 f.write("file '{}'\n".format(i))
@@ -184,7 +151,8 @@ class GoproVid(GoproRecord):
                                                    len(self.chapters)-1)
             else:
                 orig_name = self.name
-            self.outname = 'gopro.{}.{}.{}'.format(date, orig_name, self.ext.lower())
+            self.outname = 'gopro.{}.{}.{}'.format(date, orig_name, 
+                                                   self.ext.lower())
         if self.outdir is None:
             self.outdir = os.getcwd()
         self.outfile = os.path.join(self.outdir, self.outname)
@@ -195,7 +163,6 @@ class GoproVid(GoproRecord):
         
         if self.num not in self.existing_nums:
             if self.options.encode or self.is_chaptered:
-                #~ self.ffmpeg_cat_chapters(encode=self.options.encode)
                 self.ffmpeg(encode=self.options.encode)
             else:
                 print('\n\n*** copying source file with shutil\n\n')
@@ -245,7 +212,6 @@ def find_existing(outdir, num_prefix='GOPR'):
                      if i.count(num_prefix)]
     return existing_nums
 
-
 def get_options():
     parser = argparse.ArgumentParser()
     
@@ -272,10 +238,8 @@ def get_options():
     parser.add_argument('-e', '--encode', action='store_true',
                             help="""re-encode video files with ffmpeg""")
 
-    #~ options = vars(parser.parse_args())
     options = parser.parse_args()
     return options
-
 
 def main():
     options = get_options()
@@ -285,12 +249,6 @@ def main():
     for i in infiles:
         v = GoproVid(i, options, existing_nums=existing_nums)
         v.import_record()
-    
-    
-    #paths = sys.argv[1:]
-    #for i in paths:
-        #v = GoproVid(i)
-        #v.import_record()
     return 0
 
 if __name__ == '__main__':
