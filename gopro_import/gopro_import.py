@@ -121,8 +121,8 @@ class GoproVid(GoproRecord):
         if encode:
             args.extend(['-c:v', 'libx264',
                          '-preset', 'fast', 
-                         '-crf', '27', 
-                         '-vf', 'scale=-1:720', 
+                         '-crf', str(self.options.crf),
+                         '-vf', 'scale={}'.format(self.options.scale), 
                          '-movflags', '+faststart',
                          '-c:a', 'copy'])
         else:
@@ -224,20 +224,37 @@ def get_options():
                             dest='outdir',
                             help="""Path of the directory into which files 
                                     will be imported.""")
-
+    
     parser.add_argument('-m', '--mask', metavar='REGEXP',
                             help="""Input filename mask, a python regular
                                     expression.""")
-
+    
     parser.add_argument('-r', '--range', metavar='N-N',
                             help="""Range of file numbers to import,
                                     separated by a hyphen ('-').
                                     e.g., "--range 0001-0002" would import
                                     GOPR0001.MP4 and GOPR0002.MP4 (if they exist""")
-
+    
     parser.add_argument('-e', '--encode', action='store_true',
                             help="""re-encode video files with ffmpeg""")
-
+    
+    parser.add_argument('-c', '--crf', metavar='N', default=25,
+                            help="""Constant Rate Factor passed to 
+                                    ffmpeg/x264 if encoding is done.
+                                    Ignored if the --encode option isn't 
+                                    used.""")
+    
+    parser.add_argument('-s', '--scale', metavar='FILTERGRAPH',
+                            help="""Filtergraph string passed to 
+                                    ffmpeg if encoding is done and scaling
+                                    is desired. 
+                                    Ignored if the --encode option isn't 
+                                    used.  Example: "--scale -1:720" will
+                                    pass "-vf scale=-1:720" to ffmpeg,
+                                    which will scale the height to 720 pixels
+                                    and the width to match the input
+                                    aspect ratio.""")
+    
     options = parser.parse_args()
     return options
 
