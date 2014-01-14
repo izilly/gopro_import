@@ -70,6 +70,7 @@ class GoproVid(GoproRecord):
         self.chapters = sorted([os.path.join(self._dir,i) for i in 
                                 os.listdir(self._dir) if
                                 i.endswith('{}.{}'.format(self.num, self.ext))])
+        self.chapter_filenames = [os.path.basename(i) for i in self.chapters]
         if len(self.chapters) > 1:
             self.is_chaptered = True
     
@@ -136,6 +137,42 @@ class GoproVid(GoproRecord):
         cmd = ['ffmpeg'] + args + [self.outfile]
         o = subprocess.check_call(cmd)
         return self.outfile
+
+    def ffmpeg(self, encode=False):
+        args = []
+        if self.is_chaptered:
+            self.write_chapter_file()
+            tag_date = self.date_time.strftime(FF_TAGS_DATE_FMT)
+            args.extend(['-f', 'concat',
+                         '-i', self.chap_list,
+                         '-metadata', 
+                         'creation_time={}'.format(tag_date)])
+        else:
+            args.extend(['-i', self.path,
+                         '-map_metadata', '0'])
+        if encode:
+            args.extend(['-c:v', 'libx264',
+                         '-preset', 'fast', 
+                         '-crf', '27', 
+                         '-vf', 'scale=-1:720', 
+                         '-movflags', '+faststart',
+                         '-c:a', 'copy'])
+        else:
+            args.extend(['-c', 'copy'])
+        #~ args.extend(['-metadata', 
+            #~ 'creation_time={}'.format(self.date_time.strftime(FF_TAGS_DATE_FMT))])
+        cmd = ['ffmpeg'] + args + [self.outfile]
+        print('\n\n*** ffmpeg cmd:\n{}\n\n'.format(' '.join(cmd)))
+        o = subprocess.check_call(cmd)
+        return self.outfile
+    
+    def write_chapter_file(self):
+        # write paths to chapter files in a temp file
+        tmpdir = tempfile.gettempdir()
+        self.chap_list = os.path.join(tmpdir, 'gopro.{}.chaps'.format(self.name))
+        with open(self.chap_list, 'w') as f:
+            for i in self.chapters:
+                f.write("file '{}'\n".format(i))
     
     def get_outfile(self):
         if self.outname is None:
@@ -153,14 +190,21 @@ class GoproVid(GoproRecord):
         self.outfile = os.path.join(self.outdir, self.outname)
     
     def import_record(self, update_timestamps=True):
+        print('\n\n{}\n\n'.format('='*78))
+        print('Importing {}\n\n'.format(', '.join(self.chapter_filenames)))
+        
         if self.num not in self.existing_nums:
             if self.options.encode or self.is_chaptered:
-                self.ffmpeg_cat_chapters(encode=self.options.encode)
+                #~ self.ffmpeg_cat_chapters(encode=self.options.encode)
+                self.ffmpeg(encode=self.options.encode)
             else:
+                print('\n\n*** copying source file with shutil\n\n')
                 shutil.copy2(self.path, self.outfile)
-        self.imported_path = self.outfile
-        if update_timestamps:
-            self.update_file_timestamps()
+            self.imported_path = self.outfile
+            if update_timestamps:
+                self.update_file_timestamps()
+        else:
+            print('  File exists: skipping...')
     
     def update_file_timestamps(self):
         if self.date_time:
@@ -193,7 +237,7 @@ def get_infiles(options, exts=['.MP4']):
         rng = range(int(idxs[0]), int(idxs[-1])+1)
         infiles = [i for i in infiles 
                    if int(os.path.splitext(i)[0][-4:]) in rng]
-    return infiles
+    return sorted(infiles)
 
 def find_existing(outdir, num_prefix='GOPR'):
     existing_nums = [i.split(num_prefix)[1][:4]
