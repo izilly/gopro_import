@@ -22,6 +22,8 @@ def get_duration(path):
 
 def get_thumbs(path, num=4, start=5, outname=None):
     duration = get_duration(path)
+    if duration < start*2:
+        start = 0
     secs_per_thumb = ( duration - start ) / ( num + 1 )
     
     thumbs = []
@@ -36,11 +38,12 @@ def get_thumbs(path, num=4, start=5, outname=None):
                '-i', path, 
                '-frames:v', '1', 
                t]
-        o = subprocess.check_call(cmd, stderr=subprocess.DEVNULL, 
-                                  stdin=subprocess.DEVNULL)
+        o = subprocess.check_call(cmd, 
+                                  stderr=subprocess.DEVNULL, 
+                                  stdin=subprocess.DEVNULL
+                                  )
         thumbs.append(t)
         pos += secs_per_thumb
-    #~ self.thumb_paths = thumbs
     return thumbs
 
 def generate_thumb_montage(path, outfile=None, ext='tbn', skip_existing=True):
@@ -58,8 +61,6 @@ def generate_thumb_montage(path, outfile=None, ext='tbn', skip_existing=True):
                     outfile = new_name
                     break
     
-    #~ print('\nGenerating thumbnail montage: {}\n'.format(outfile))
-
     thumbs = get_thumbs(path)
     
     margs = ['-geometry', '240x135+4+3>', 
@@ -74,24 +75,41 @@ def generate_thumb_montage(path, outfile=None, ext='tbn', skip_existing=True):
     bcmd = ['convert'] + bargs + ['png:{}'.format(outfile)]
     
     p1 = subprocess.Popen(mcmd,
-                          stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                          stdout=subprocess.PIPE, 
+                          stderr=subprocess.DEVNULL
+                          )
     p2 = subprocess.Popen(bcmd,
-                          stdin=p1.stdout, stderr=subprocess.DEVNULL)
+                          stdin=p1.stdout, 
+                          stderr=subprocess.DEVNULL
+                          )
     p1.stdout.close()
     output, err = p2.communicate()
     
+    if p2.returncode != 0:
+        print('Error: montage/convert command returned non-zero exit status')
+        return False
+    
     return outfile
+
+def detect_empty_glob(paths):
+    if len(paths) == 1 and not os.path.exists(paths[0]):
+        paths = []
+        return paths
+    else:
+        return paths
 
 
 def main():
-    paths = sys.argv[1:]
+    paths = detect_empty_glob(sys.argv[1:])
     for p in paths:
         print('\nProcessing: {}'.format(p))
         tn = generate_thumb_montage(p)
         if tn:
             print('  Generated thumbnail: {}'.format(tn))
-        else:
+        elif tn is None:
             print('  thumbnail exists; skipping...'.format(tn))
+        elif tn is False:
+            print('  skipped due to error...'.format(tn))
     return 0
 
 if __name__ == '__main__':
