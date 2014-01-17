@@ -20,25 +20,34 @@ def get_duration(path):
     duration = float(o)
     return duration
 
-def get_thumbs(path, num=4, start=5, outname=None):
+def get_thumbs(path, num=4, start=5, outname=None, outdir=None, scale='240:-1'):
     duration = get_duration(path)
     if duration < start*2:
         start = 0
     secs_per_thumb = ( duration - start ) / ( num + 1 )
     
     thumbs = []
-    outdir = tempfile.gettempdir()
-    outpath = os.path.join(outdir, str(id(thumbs)))
+    
+    if outdir is None:
+        #~ outdir = tempfile.gettempdir()
+        outdir = os.path.join(os.path.dirname(path), '.thumbs')
+        if not os.path.exists(outdir):
+            os.mkdir(outdir)
+    if outname is None:
+        outname = '{}_thumb'.format(os.path.splitext(os.path.basename(path))[0])
+    #~ outpath = os.path.join(outdir, str(id(thumbs)))
+    outpath = os.path.join(outdir, outname)
     
     pos = start
     for i in range(num):
-        t = '{}_{}.jpg'.format(outpath, i)
+        t = '{}_{}_{}.jpg'.format(outpath, i, round(pos))
         cmd = ['ffmpeg', '-n',
                '-ss', str(pos), 
                '-i', path, 
-               '-frames:v', '1', 
-               t]
-        o = subprocess.check_call(cmd, 
+               '-frames:v', '1']
+        if scale:
+            cmd.extend(['-vf', 'scale={}'.format(scale)])
+        o = subprocess.check_call(cmd + [t], 
                                   stderr=subprocess.DEVNULL, 
                                   stdin=subprocess.DEVNULL
                                   )
@@ -46,9 +55,9 @@ def get_thumbs(path, num=4, start=5, outname=None):
         pos += secs_per_thumb
     return thumbs
 
-def generate_thumb_montage(path, outfile=None, ext='tbn', skip_existing=True):
+def generate_thumb_montage(path, outfile=None, ext='png', skip_existing=True):
     if outfile is None:
-        outfile = '{}.{}'.format(os.path.splitext(path)[0], ext)
+        outfile = '{}-thumb.{}'.format(os.path.splitext(path)[0], ext)
     
     if os.path.exists(outfile):
         if skip_existing:
@@ -63,11 +72,13 @@ def generate_thumb_montage(path, outfile=None, ext='tbn', skip_existing=True):
     
     thumbs = get_thumbs(path)
     
-    margs = ['-geometry', '240x135+4+3>', 
-            '-shadow',
-            '-tile', '2x2',
-            '-background', 'none',
-            'png:-']
+    margs = [
+             #~ '-geometry', '240x135+4+3>', 
+             '-geometry', '+4+3>', 
+             '-shadow',
+             '-tile', '2x2',
+             '-background', 'none',
+             'png:-']
     bargs = ['-',
              '-bordercolor', 'none',
              '-border', '22x8']
