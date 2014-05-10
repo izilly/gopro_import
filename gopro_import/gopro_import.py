@@ -177,7 +177,10 @@ class GoproVid(GoproRecord):
                 self.update_file_timestamps()
             if with_thumbs:
                 #~ self.generate_thumb_montage()
-                self.thumb_montage = thumbnailer.generate_thumb_montage(self.outfile)
+                try:
+                    self.thumb_montage = thumbnailer.generate_thumb_montage(self.outfile)
+                except:
+                    pass
                 self.update_file_timestamps(self.thumb_montage)
         else:
             print('  File exists: skipping...')
