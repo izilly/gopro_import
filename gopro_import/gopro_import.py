@@ -202,58 +202,6 @@ class GoproVid(GoproRecord):
                                     universal_newlines=True)
         self.duration = float(o)
     
-    #def get_thumbs(self, num=4, start=5, outname=None):
-        #if not self.duration:
-            #self.get_duration()
-        #secs_per_thumb = ( self.duration - start ) / ( num + 1 )
-        ##~ fps = 1 / spt
-        
-        #outdir = tempfile.gettempdir()
-        #outpath = os.path.join(outdir, self._id)
-        
-        #thumbs = []
-        #pos = start
-        #for i in range(num):
-            #t = '{}_{}.jpg'.format(outpath, i)
-            #cmd = ['ffmpeg',
-                   #'-ss', str(pos), 
-                   #'-i', self.path, 
-                   #'-frames:v', '1', 
-                   #t]
-            #o = subprocess.check_call(cmd, stderr=subprocess.DEVNULL,
-                                      #stdin=subprocess.DEVNULL)
-            #thumbs.append(t)
-            #pos += secs_per_thumb
-        #self.thumb_paths = thumbs
-    
-    #def generate_thumb_montage(self, outfile=None, ext='tbn'):
-        #if outfile is None:
-            #outfile = '{}.{}'.format(os.path.splitext(self.outfile)[0], ext)
-        
-        #print('\nGenerating thumbnail montage: {}\n'.format(outfile))
-
-        #if not self.thumb_paths:
-            #self.get_thumbs()
-        
-        #margs = ['-geometry', '240x135+4+3>', 
-                #'-shadow',
-                #'-tile', '2x2',
-                #'-background', 'none',
-                #'png:-']
-        #bargs = ['-',
-                 #'-bordercolor', 'none',
-                 #'-border', '22x8']
-        #mcmd = ['montage'] + self.thumb_paths + margs
-        #bcmd = ['convert'] + bargs + ['png:{}'.format(outfile)]
-        
-        #p1 = subprocess.Popen(mcmd,
-                              #stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        #p2 = subprocess.Popen(bcmd,
-                              #stdin=p1.stdout, stderr=subprocess.DEVNULL)
-        #p1.stdout.close()
-        #output, err = p2.communicate()
-        
-        #self.thumb_montage = outfile
 
 def get_infiles(options, exts=['.MP4']):
     paths = options.infiles
