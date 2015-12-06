@@ -28,9 +28,9 @@ FF_TAGS_DATE_FMT = '%Y-%m-%dT%H:%M:%S'
 TAGS_UTC = ['quicktime']
 # re patterns for parsing date from metadata
 PAT_SEP=r'[^a-zA-Z0-9]?'
-PAT_DATE = (r'{d4}{s}{d2}{s}{d2}').format(d4=r'(\d{4})', d2=r'(\d{2})', 
+PAT_DATE = (r'{d4}{s}{d2}{s}{d2}').format(d4=r'(\d{4})', d2=r'(\d{2})',
                                           s=PAT_SEP)
-PAT_TIME = (r'{d2}{s}{d2}{s}{d2}').format(d2=r'(\d{2})', 
+PAT_TIME = (r'{d2}{s}{d2}{s}{d2}').format(d2=r'(\d{2})',
                                           s=PAT_SEP)
 PAT_DATE_TIME = r'{d}{s}{t}'.format(d=PAT_DATE, t=PAT_TIME, s=PAT_SEP)
 RE_DATE_TIME = re.compile(PAT_DATE_TIME)
@@ -42,7 +42,7 @@ class GoproRecord(object):
 
 
 class GoproVid(GoproRecord):
-    def __init__(self, path, options, outname=None, outdir=None, 
+    def __init__(self, path, options, outname=None, outdir=None,
                  existing_nums=[]):
         self._id = str(id(self))
         self.path = path
@@ -62,23 +62,23 @@ class GoproVid(GoproRecord):
         self.get_chapters()
         self.get_outfile()
         #~ self.generate_thumb_montage()
-    
+
     def get_chapters(self):
-        self.chapters = sorted([os.path.join(self._dir,i) for i in 
+        self.chapters = sorted([os.path.join(self._dir,i) for i in
                                 os.listdir(self._dir) if
-                                i.endswith('{}.{}'.format(self.num, 
+                                i.endswith('{}.{}'.format(self.num,
                                                           self.ext))])
         self.chapter_filenames = [os.path.basename(i) for i in self.chapters]
         if len(self.chapters) > 1:
             self.is_chaptered = True
-    
+
     def get_exiftool_date(self):
         date_tags = TAGS_EXIFTOOL
         for i in date_tags:
             try:
-                tag_date = subprocess.check_output(['exiftool', '-G', 
+                tag_date = subprocess.check_output(['exiftool', '-G',
                                                     '-args',
-                                                    '-{}'.format(i), 
+                                                    '-{}'.format(i),
                                                     self.path],
                                              universal_newlines=True,
                                              stderr=subprocess.DEVNULL).strip()
@@ -100,7 +100,7 @@ class GoproVid(GoproRecord):
         self.date_time = date_time
         #~ if self.tag_date_in_utc:
             #~ self.utc_to_local()
-    
+
     def parse_date_str(self, date_str):
         date_parts = RE_DATE_TIME.search(date_str)
         if date_parts:
@@ -109,7 +109,7 @@ class GoproVid(GoproRecord):
         else:
             date_time = None
         return date_time
-    
+
     def ffmpeg(self, encode=False):
         args = []
         if self.is_chaptered:
@@ -117,16 +117,16 @@ class GoproVid(GoproRecord):
             tag_date = self.date_time.strftime(FF_TAGS_DATE_FMT)
             args.extend(['-f', 'concat',
                          '-i', self.chap_list,
-                         '-metadata', 
+                         '-metadata',
                          'creation_time={}'.format(tag_date)])
         else:
             args.extend(['-i', self.path,
                          '-map_metadata', '0'])
         if encode:
             args.extend(['-c:v', 'libx264',
-                         '-preset', 'fast', 
+                         '-preset', 'fast',
                          '-crf', str(self.options.crf),
-                         '-vf', 'scale={}'.format(self.options.scale), 
+                         '-vf', 'scale={}'.format(self.options.scale),
                          '-movflags', '+faststart',
                          '-c:a', 'copy'])
         else:
@@ -136,36 +136,36 @@ class GoproVid(GoproRecord):
         o = subprocess.check_call(cmd, stderr=subprocess.DEVNULL,
                                   stdin=subprocess.DEVNULL)
         return self.outfile
-    
+
     def write_chapter_file(self):
         # write chapter file paths to a temp file
         tmpdir = tempfile.gettempdir()
-        self.chap_list = os.path.join(tmpdir, 
+        self.chap_list = os.path.join(tmpdir,
                                       'gopro.{}.chaps'.format(self.name))
         with open(self.chap_list, 'w') as f:
             for i in self.chapters:
                 f.write("file '{}'\n".format(i))
-    
+
     def get_outfile(self):
         if self.outname is None:
             if self.date_time is None:
                 self.get_date_time()
             date = '{:%Y.%m.%d_%H.%M.%S}'.format(self.date_time)
             if len(self.chapters) > 1:
-                orig_name = '{}.pt00-{:02}'.format(self.name, 
+                orig_name = '{}.pt00-{:02}'.format(self.name,
                                                    len(self.chapters)-1)
             else:
                 orig_name = self.name
-            self.outname = 'gpv.{}.{}.{}'.format(date, orig_name, 
+            self.outname = 'gpv.{}.{}.{}'.format(date, orig_name,
                                                    self.ext.lower())
         if self.outdir is None:
             self.outdir = os.getcwd()
         self.outfile = os.path.join(self.outdir, self.outname)
-    
+
     def import_record(self, update_timestamps=True, with_thumbs=True):
         print('\n\n{}\n'.format('='*78))
         print('Importing {}\n'.format(', '.join(self.chapter_filenames)))
-        
+
         if self.num not in self.existing_nums:
             if self.options.encode or self.is_chaptered:
                 self.ffmpeg(encode=self.options.encode)
@@ -184,7 +184,7 @@ class GoproVid(GoproRecord):
                 self.update_file_timestamps(self.thumb_montage)
         else:
             print('  File exists: skipping...')
-    
+
     def update_file_timestamps(self, path=None):
         if self.date_time:
             if path is None:
@@ -192,16 +192,16 @@ class GoproVid(GoproRecord):
             ts = self.date_time.timestamp()
             #~ os.utime(self.imported_path, (ts, ts))
             os.utime(path, (ts, ts))
-    
+
     def get_duration(self):
         args = ['-print_format', 'default=nk=1:nw=1',
-                '-show_entries', 
+                '-show_entries',
                 'format=duration']
         o = subprocess.check_output(['ffprobe'] + args + [self.path],
                                     stderr=subprocess.DEVNULL,
                                     universal_newlines=True)
         self.duration = float(o)
-    
+
 
 def get_infiles(options, exts=['.MP4']):
     paths = options.infiles
@@ -212,62 +212,67 @@ def get_infiles(options, exts=['.MP4']):
             indirs.append(p)
         else:
             infiles.append(p)
-    
+
     for i in indirs:
         files = [os.path.join(i,f) for f in os.listdir(i)]
-        mediafiles = [f for f in files for e in exts 
+        mediafiles = [f for f in files for e in exts
                       if os.path.splitext(f)[1] == e
                       and not os.path.basename(f).startswith('GP')]
         infiles.extend(mediafiles)
 
     if options.mask:
         infiles = [i for i in infiles if re.search(options.mask, i)]
-    
+
     if options.range:
         idxs = options.range.split('-')
         rng = range(int(idxs[0]), int(idxs[-1])+1)
-        infiles = [i for i in infiles 
+        infiles = [i for i in infiles
                    if int(os.path.splitext(i)[0][-4:]) in rng]
     return sorted(infiles)
 
 def find_existing(outdir, num_prefix='GOPR'):
     existing_nums = [i.split(num_prefix)[1][:4]
-                     for i in os.listdir(outdir) 
+                     for i in os.listdir(outdir)
                      if i.count(num_prefix)]
     return existing_nums
 
 def get_options():
     parser = argparse.ArgumentParser()
-    
+
     parser.add_argument('infiles', nargs='+', metavar='INFILE',
                             help="""List of paths to import.  
                                     %(metavar)s can be a file or a directory.
                                     """)
-    
+
     parser.add_argument('-o', '--output-dir', metavar='OUTDIR', default='.',
                             dest='outdir',
                             help="""Path of the directory into which files 
                                     will be imported.""")
-    
+
+    parser.add_argument('-O', '--existing_dirs', metavar='OUTDIR', nargs='+',
+                            default=[],
+                            help="""Path(s) (in addition to OUTDIR) which will be
+                                    checked for existing files.""")
+
     parser.add_argument('-m', '--mask', metavar='REGEXP',
                             help="""Input filename mask, a python regular
                                     expression.""")
-    
+
     parser.add_argument('-r', '--range', metavar='N-N',
                             help="""Range of file numbers to import,
                                     separated by a hyphen ('-').
                                     e.g., "--range 0001-0002" would import
                                     GOPR0001.MP4 and GOPR0002.MP4 (if they exist""")
-    
+
     parser.add_argument('-e', '--encode', action='store_true',
                             help="""re-encode video files with ffmpeg""")
-    
+
     parser.add_argument('-c', '--crf', metavar='N', default=25,
                             help="""Constant Rate Factor passed to 
                                     ffmpeg/x264 if encoding is done.
                                     Ignored if the --encode option isn't 
                                     used.""")
-    
+
     parser.add_argument('-s', '--scale', metavar='W:H',
                             help="""Filtergraph string passed to 
                                     ffmpeg if encoding is done and scaling
@@ -278,7 +283,7 @@ def get_options():
                                     which will scale the height to 720 pixels
                                     and the width to match the input
                                     aspect ratio.""")
-    
+
     options = parser.parse_args()
     return options
 
@@ -286,10 +291,13 @@ def main():
     options = get_options()
     infiles = get_infiles(options)
     existing_nums = find_existing(options.outdir)
-    
+    for i in options.existing_dirs:
+        existing_nums.extend(find_existing(i))
+
+
     innames = '\n  '.join([os.path.basename(i) for i in infiles])
     print('\n\nImporting:\n  {}\n\n'.format(innames))
-    
+
     for i in infiles:
         v = GoproVid(i, options, existing_nums=existing_nums)
         v.import_record()
