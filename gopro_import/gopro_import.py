@@ -178,7 +178,8 @@ class GoproVid(GoproRecord):
             if with_thumbs:
                 #~ self.generate_thumb_montage()
                 try:
-                    self.thumb_montage = thumbnailer.generate_thumb_montage(self.outfile)
+                    self.thumb_montage = thumbnailer.generate_thumb_montage(
+                                                                 self.outfile)
                 except:
                     pass
                 self.update_file_timestamps(self.thumb_montage)
@@ -251,8 +252,8 @@ def get_options():
 
     parser.add_argument('-O', '--existing_dirs', metavar='OUTDIR', nargs='+',
                             default=[],
-                            help="""Path(s) (in addition to OUTDIR) which will be
-                                    checked for existing files.""")
+                            help="""Path(s) (in addition to OUTDIR) which will 
+                                    be checked for existing files.""")
 
     parser.add_argument('-m', '--mask', metavar='REGEXP',
                             help="""Input filename mask, a python regular
@@ -262,7 +263,8 @@ def get_options():
                             help="""Range of file numbers to import,
                                     separated by a hyphen ('-').
                                     e.g., "--range 0001-0002" would import
-                                    GOPR0001.MP4 and GOPR0002.MP4 (if they exist""")
+                                    GOPR0001.MP4 and GOPR0002.MP4 (if they 
+                                    exist""")
 
     parser.add_argument('-e', '--encode', action='store_true',
                             help="""re-encode video files with ffmpeg""")
