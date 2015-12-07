@@ -64,15 +64,36 @@ class GoproVid(GoproRecord):
         #~ self.generate_thumb_montage()
 
     def get_chapters(self):
+        '''
+        Find all the chapters associated with this file.
+
+        Gopro splits long videos into chapters (smaller files).
+        This method finds all the files that make up a single video.
+
+        see: https://gopro.com/support/articles/hero3-and-hero3-file-naming-convention
+        '''
+        # find all chapters/files by checking for files ending with
+        # NUM.EXT.  e.g.:
+        #   GOPR1628.MP4
+        #   GP011628.MP4
+        #   GP021628.MP4
         self.chapters = sorted([os.path.join(self._dir,i) for i in
                                 os.listdir(self._dir) if
                                 i.endswith('{}.{}'.format(self.num,
                                                           self.ext))])
+        # get just the basenames of each chapter.
         self.chapter_filenames = [os.path.basename(i) for i in self.chapters]
         if len(self.chapters) > 1:
             self.is_chaptered = True
 
     def get_exiftool_date(self):
+        '''
+        Get date-taken from file metadata tags.
+
+        Requires exiftool to be installed.
+        Returns the first date found by inspecting TAGS_EXIFTOOL in order.
+        '''
+        # check these tags defined in TAGS_EXIFTOOL
         date_tags = TAGS_EXIFTOOL
         for i in date_tags:
             try:
@@ -85,6 +106,7 @@ class GoproVid(GoproRecord):
             except:
                 tag_date = None
             if tag_date:
+                # split into group/name/value
                 tag_name, tag_date = tag_date.split('=')
                 tag_group, tag_name = tag_name.strip('-').split(':')
                 #~ if tag_group.lower() in TAGS_UTC:
@@ -93,36 +115,56 @@ class GoproVid(GoproRecord):
                 return tag_date
 
     def get_date_time(self):
+        '''
+        Get the date-taken from video metadata and convert to a datetime.datetime.
+        '''
         date_time = None
+        # get date from metadata tag
         tag_date = self.get_exiftool_date()
         if tag_date:
+            # convert to datetime
             date_time = self.parse_date_str(tag_date)
+        # set self.date_time (could be None)
         self.date_time = date_time
         #~ if self.tag_date_in_utc:
             #~ self.utc_to_local()
 
     def parse_date_str(self, date_str):
+        '''
+        Parse date-taken string and convert it to a datetime.datetime.
+        '''
+        # split into year,month,day,hour,minute,second
         date_parts = RE_DATE_TIME.search(date_str)
         if date_parts:
             date_parts = [int(i) for i in date_parts.groups()]
+            # convert to a datetime.datetime.
             date_time = datetime(*date_parts)
         else:
             date_time = None
         return date_time
 
     def ffmpeg(self, encode=False):
+        '''
+        Encode and/or join output video.
+
+        Requires ffmpeg to be installed.
+        '''
         args = []
+        # if chaptered video, use ffmpeg to concat to a single file
         if self.is_chaptered:
             self.write_chapter_file()
+            # format date-taken into format suitable for video metadata tag
             tag_date = self.date_time.strftime(FF_TAGS_DATE_FMT)
             args.extend(['-f', 'concat',
                          '-i', self.chap_list,
                          '-metadata',
                          'creation_time={}'.format(tag_date)])
         else:
+            # build ffmpeg command arguments
             args.extend(['-i', self.path,
                          '-map_metadata', '0'])
         if encode:
+            # set encoder options
             args.extend(['-c:v', 'libx264',
                          '-preset', 'fast',
                          '-crf', str(self.options.crf),
@@ -130,6 +172,8 @@ class GoproVid(GoproRecord):
                          '-movflags', '+faststart',
                          '-c:a', 'copy'])
         else:
+            # if not using encode option, just copy audio/video into
+            # output container
             args.extend(['-c', 'copy'])
         cmd = ['ffmpeg'] + args + [self.outfile]
         print('\n*** ffmpeg cmd:\n{}\n'.format(' '.join(cmd)))
@@ -138,6 +182,9 @@ class GoproVid(GoproRecord):
         return self.outfile
 
     def write_chapter_file(self):
+        '''
+        Write a chapter file for `ffmpeg -concat` to join chaptered video.
+        '''
         # write chapter file paths to a temp file
         tmpdir = tempfile.gettempdir()
         self.chap_list = os.path.join(tmpdir,
@@ -147,17 +194,24 @@ class GoproVid(GoproRecord):
                 f.write("file '{}'\n".format(i))
 
     def get_outfile(self):
+        '''
+        Get the output filename.
+        '''
         if self.outname is None:
+            # get date
             if self.date_time is None:
                 self.get_date_time()
+            # format date for output filename
             date = '{:%Y.%m.%d_%H.%M.%S}'.format(self.date_time)
             if len(self.chapters) > 1:
                 orig_name = '{}.pt00-{:02}'.format(self.name,
                                                    len(self.chapters)-1)
             else:
                 orig_name = self.name
+            # format output filename
             self.outname = 'gpv.{}.{}.{}'.format(date, orig_name,
                                                    self.ext.lower())
+        # get full path to output file
         if self.outdir is None:
             self.outdir = os.getcwd()
         self.outfile = os.path.join(self.outdir, self.outname)
@@ -168,12 +222,15 @@ class GoproVid(GoproRecord):
 
         if self.num not in self.existing_nums:
             if self.options.encode or self.is_chaptered:
+                # encode and/or join file with ffmpeg
                 self.ffmpeg(encode=self.options.encode)
             else:
+                # if not encoding/joining, just copy file
                 print('\n\n*** copying source file with shutil\n\n')
                 shutil.copy2(self.path, self.outfile)
             self.imported_path = self.outfile
             if update_timestamps:
+                # update imported file's timestamps to match date-taken
                 self.update_file_timestamps()
             if with_thumbs:
                 #~ self.generate_thumb_montage()
@@ -184,9 +241,13 @@ class GoproVid(GoproRecord):
                     pass
                 self.update_file_timestamps(self.thumb_montage)
         else:
+            # skip if video is already imported
             print('  File exists: skipping...')
 
     def update_file_timestamps(self, path=None):
+        '''
+        Update the output file timestamps to match date-taken.
+        '''
         if self.date_time:
             if path is None:
                 path = self.imported_path

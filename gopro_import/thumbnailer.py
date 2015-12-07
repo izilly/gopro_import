@@ -11,8 +11,13 @@ import tempfile
 import os
 
 def get_duration(path):
+    '''
+    Get the duration of video file.
+
+    Requires ffprobe to be installed.
+    '''
     args = ['-print_format', 'default=nk=1:nw=1',
-            '-show_entries', 
+            '-show_entries',
             'format=duration']
     o = subprocess.check_output(['ffprobe'] + args + [path],
                                 stderr=subprocess.DEVNULL,
@@ -21,13 +26,18 @@ def get_duration(path):
     return duration
 
 def get_thumbs(path, num=4, start=5, outname=None, outdir=None, scale='240:-1'):
+    '''
+    Create a number of thumbnail images for a video.
+
+    Extract several frames (number given by 'num') from the video.
+    '''
     duration = get_duration(path)
     if duration < start*2:
         start = 0
     secs_per_thumb = ( duration - start ) / ( num + 1 )
-    
+
     thumbs = []
-    
+
     if outdir is None:
         #~ outdir = tempfile.gettempdir()
         outdir = os.path.join(os.path.dirname(path), '.thumbs')
@@ -37,18 +47,18 @@ def get_thumbs(path, num=4, start=5, outname=None, outdir=None, scale='240:-1'):
         outname = '{}_thumb'.format(os.path.splitext(os.path.basename(path))[0])
     #~ outpath = os.path.join(outdir, str(id(thumbs)))
     outpath = os.path.join(outdir, outname)
-    
+
     pos = start
     for i in range(num):
         t = '{}_{}_{}.jpg'.format(outpath, i, round(pos))
         cmd = ['ffmpeg', '-n',
-               '-ss', str(pos), 
-               '-i', path, 
+               '-ss', str(pos),
+               '-i', path,
                '-frames:v', '1']
         if scale:
             cmd.extend(['-vf', 'scale={}'.format(scale)])
-        o = subprocess.check_call(cmd + [t], 
-                                  stderr=subprocess.DEVNULL, 
+        o = subprocess.check_call(cmd + [t],
+                                  stderr=subprocess.DEVNULL,
                                   stdin=subprocess.DEVNULL
                                   )
         thumbs.append(t)
@@ -56,25 +66,33 @@ def get_thumbs(path, num=4, start=5, outname=None, outdir=None, scale='240:-1'):
     return thumbs
 
 def generate_thumb_montage(path, outfile=None, ext='png', skip_existing=True):
+    '''
+    Generate thumbnail image for video.
+
+    This takes several frames from video and creates a montage
+    so the user can quickly see an overview of the video by
+    looking at the thumbnail.
+    '''
     if outfile is None:
         outfile = '{}-thumb.{}'.format(os.path.splitext(path)[0], ext)
-    
+
     if os.path.exists(outfile):
         if skip_existing:
             return None
         else:
+            # todo: rethink this?
             n, e = os.path.splitext(outfile)
             for i in range(1,100):
                 new_name = '{}_{}{}'.format(n, i, e)
                 if not os.path.exists(new_name):
                     outfile = new_name
                     break
-    
+
     thumbs = get_thumbs(path)
-    
+
     margs = [
-             #~ '-geometry', '240x135+4+3>', 
-             '-geometry', '+4+3>', 
+             #~ '-geometry', '240x135+4+3>',
+             '-geometry', '+4+3>',
              '-shadow',
              '-tile', '2x2',
              '-background', 'none',
@@ -82,24 +100,26 @@ def generate_thumb_montage(path, outfile=None, ext='png', skip_existing=True):
     bargs = ['-',
              '-bordercolor', 'none',
              '-border', '22x8']
+    # montage command
     mcmd = ['montage'] + thumbs + margs
+    # border command
     bcmd = ['convert'] + bargs + ['png:{}'.format(outfile)]
-    
+
     p1 = subprocess.Popen(mcmd,
-                          stdout=subprocess.PIPE, 
+                          stdout=subprocess.PIPE,
                           stderr=subprocess.DEVNULL
                           )
     p2 = subprocess.Popen(bcmd,
-                          stdin=p1.stdout, 
+                          stdin=p1.stdout,
                           stderr=subprocess.DEVNULL
                           )
     p1.stdout.close()
     output, err = p2.communicate()
-    
+
     if p2.returncode != 0:
         print('Error: montage/convert command returned non-zero exit status')
         return False
-    
+
     return outfile
 
 def detect_empty_glob(paths):
