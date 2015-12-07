@@ -232,7 +232,7 @@ class GoproVid(GoproRecord):
             if update_timestamps:
                 # update imported file's timestamps to match date-taken
                 self.update_file_timestamps()
-            if with_thumbs:
+            if self.options.thumbnails:
                 #~ self.generate_thumb_montage()
                 try:
                     self.thumb_montage = thumbnailer.generate_thumb_montage(
@@ -346,6 +346,10 @@ def get_options():
                                     which will scale the height to 720 pixels
                                     and the width to match the input
                                     aspect ratio.""")
+
+    parser.add_argument('-t', '--thumbnails', action='store_true',
+                            help="""Create thumbnail for each video. 
+                                    (Requires imagemagick)""")
 
     options = parser.parse_args()
     return options
