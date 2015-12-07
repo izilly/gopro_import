@@ -120,6 +120,9 @@ def generate_thumb_montage(path, outfile=None, ext='png', skip_existing=True):
         print('Error: montage/convert command returned non-zero exit status')
         return False
 
+    for t in thumbs:
+        os.remove(t)
+
     return outfile
 
 def detect_empty_glob(paths):
