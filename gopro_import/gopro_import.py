@@ -13,7 +13,10 @@ from datetime import datetime
 import re
 import shutil
 import tempfile
-import thumbnailer
+try:
+    import thumbnailer
+except ImportError:
+    thumbnailer = None
 
 # metadata tagnames, etc
 TAGS_DATE = ['Exif.Photo.DateTimeDigitized',
@@ -232,7 +235,7 @@ class GoproVid(GoproRecord):
             if not self.options.keep_timestamps:
                 # update imported file's timestamps to match date-taken
                 self.update_file_timestamps()
-            if self.options.thumbnails:
+            if thumbnailer and self.options.thumbnails:
                 try:
                     self.thumb_montage = thumbnailer.generate_thumb_montage(
                                                                  self.outfile)
