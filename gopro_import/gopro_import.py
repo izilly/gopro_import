@@ -330,31 +330,31 @@ def get_options():
                                     expression.""")
 
     parser.add_argument('-r', '--range', metavar='N-N',
-                            help="""Range of file numbers to import,
+                            help='''Range of file numbers to import,
                                     separated by a hyphen ('-').
-                                    e.g., "--range 0001-0002" would import
-                                    GOPR0001.MP4 and GOPR0002.MP4 (if they
-                                    exist""")
+                                    e.g., "--range 1628-1649" would import
+                                    GOPR1628.MP4, GOPR1629.MP4 and so on
+                                    but skip GOPR1650.MP4
+                                    ''')
 
     parser.add_argument('-e', '--encode', action='store_true',
                             help="""re-encode video files with ffmpeg""")
 
     parser.add_argument('-c', '--crf', metavar='N', default=25,
                             help="""Constant Rate Factor passed to
-                                    ffmpeg/x264 if encoding is done.
+                                    ffmpeg/x264 if encoding is enabled.
                                     Ignored if the --encode option isn't
                                     used.""")
 
     parser.add_argument('-s', '--scale', metavar='W:H',
                             help="""Filtergraph string passed to
-                                    ffmpeg if encoding is done and scaling
-                                    is desired.
+                                    ffmpeg if encoding is enabled and
+                                    scaling is desired.
                                     Ignored if the --encode option isn't
-                                    used.  Example: "--scale -1:720" will
-                                    pass "-vf scale=-1:720" to ffmpeg,
-                                    which will scale the height to 720 pixels
-                                    and the width to match the input
-                                    aspect ratio.""")
+                                    used.  Example: "--scale 1280:720" will
+                                    pass "-vf scale=1280:720" to ffmpeg,
+                                    which would scale every video to
+                                    720p""")
 
     parser.add_argument('-t', '--thumbnails', action='store_true',
                             help="""Create thumbnail for each video.
