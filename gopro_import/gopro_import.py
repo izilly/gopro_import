@@ -55,7 +55,7 @@ class GoproVid(GoproRecord):
         self.existing_nums = existing_nums
         self.imported_path = None
         self.is_chaptered = False
-        self.date_time  = None
+        self.date_time = None
         self.duration = None
         self.thumb_paths = []
         self._dir, self.filename = os.path.split(self.path)
@@ -242,7 +242,7 @@ class GoproVid(GoproRecord):
                 except:
                     # todo: log a message notifying user of failure
                     self.thumb_montage = None
-                if self.thumb_montage and  not self.options.keep_timestamps:
+                if self.thumb_montage and not self.options.keep_timestamps:
                     self.update_file_timestamps(self.thumb_montage)
         else:
             # skip if video is already imported
@@ -297,10 +297,14 @@ def get_infiles(options, exts=['.MP4']):
                    if int(os.path.splitext(i)[0][-4:]) in rng]
     return sorted(infiles)
 
-def find_existing(outdir, num_prefix='GOPR'):
+def find_existing(outdir, num_prefix='GOPR', exts=['.mp4']):
+    # find existing videos
+    # look for files that end with: GOPRXXXX.ext
+    # and extract the XXXX part
     existing_nums = [i.split(num_prefix)[1][:4]
                      for i in os.listdir(outdir)
-                     if i.count(num_prefix)]
+                     if i.count(num_prefix) and
+                     os.path.splitext(i)[1].lower() in exts]
     return existing_nums
 
 def get_options():
