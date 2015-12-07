@@ -39,8 +39,8 @@ def get_thumbs(path, num=4, start=5, outname=None, outdir=None, scale='240:-1'):
     thumbs = []
 
     if outdir is None:
-        #~ outdir = tempfile.gettempdir()
-        outdir = os.path.join(os.path.dirname(path), '.thumbs')
+        tmpdir = tempfile.gettempdir()
+        outdir = os.path.join(tmpdir, 'gopro_import_thumbs')
         if not os.path.exists(outdir):
             os.mkdir(outdir)
     if outname is None:

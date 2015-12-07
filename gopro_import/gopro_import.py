@@ -241,8 +241,9 @@ class GoproVid(GoproRecord):
                                                                  self.outfile)
                 except:
                     # todo: log a message notifying user of failure
-                    pass
-                self.update_file_timestamps(self.thumb_montage)
+                    self.thumb_montage = None
+                if self.thumb_montage and  not self.options.keep_timestamps:
+                    self.update_file_timestamps(self.thumb_montage)
         else:
             # skip if video is already imported
             print('  File exists: skipping...')
@@ -256,7 +257,8 @@ class GoproVid(GoproRecord):
                 path = self.imported_path
             ts = self.date_time.timestamp()
             #~ os.utime(self.imported_path, (ts, ts))
-            os.utime(path, (ts, ts))
+            if os.path.exists(path):
+                os.utime(path, (ts, ts))
 
     def get_duration(self):
         args = ['-print_format', 'default=nk=1:nw=1',
