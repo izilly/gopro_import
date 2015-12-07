@@ -116,7 +116,7 @@ class GoproVid(GoproRecord):
 
     def get_date_time(self):
         '''
-        Get the date-taken from video metadata and convert to a datetime.datetime.
+        Get date-taken from video metadata and convert to a datetime.datetime.
         '''
         date_time = None
         # get date from metadata tag
@@ -229,15 +229,15 @@ class GoproVid(GoproRecord):
                 print('\n\n*** copying source file with shutil\n\n')
                 shutil.copy2(self.path, self.outfile)
             self.imported_path = self.outfile
-            if update_timestamps:
+            if not self.options.keep_timestamps:
                 # update imported file's timestamps to match date-taken
                 self.update_file_timestamps()
             if self.options.thumbnails:
-                #~ self.generate_thumb_montage()
                 try:
                     self.thumb_montage = thumbnailer.generate_thumb_montage(
                                                                  self.outfile)
                 except:
+                    # todo: log a message notifying user of failure
                     pass
                 self.update_file_timestamps(self.thumb_montage)
         else:
@@ -302,18 +302,18 @@ def get_options():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('infiles', nargs='+', metavar='INFILE',
-                            help="""List of paths to import.  
+                            help="""List of paths to import.
                                     %(metavar)s can be a file or a directory.
                                     """)
 
     parser.add_argument('-o', '--output-dir', metavar='OUTDIR', default='.',
                             dest='outdir',
-                            help="""Path of the directory into which files 
+                            help="""Path of the directory into which files
                                     will be imported.""")
 
     parser.add_argument('-O', '--existing_dirs', metavar='OUTDIR', nargs='+',
                             default=[],
-                            help="""Path(s) (in addition to OUTDIR) which will 
+                            help="""Path(s) (in addition to OUTDIR) which will
                                     be checked for existing files.""")
 
     parser.add_argument('-m', '--mask', metavar='REGEXP',
@@ -324,23 +324,23 @@ def get_options():
                             help="""Range of file numbers to import,
                                     separated by a hyphen ('-').
                                     e.g., "--range 0001-0002" would import
-                                    GOPR0001.MP4 and GOPR0002.MP4 (if they 
+                                    GOPR0001.MP4 and GOPR0002.MP4 (if they
                                     exist""")
 
     parser.add_argument('-e', '--encode', action='store_true',
                             help="""re-encode video files with ffmpeg""")
 
     parser.add_argument('-c', '--crf', metavar='N', default=25,
-                            help="""Constant Rate Factor passed to 
+                            help="""Constant Rate Factor passed to
                                     ffmpeg/x264 if encoding is done.
-                                    Ignored if the --encode option isn't 
+                                    Ignored if the --encode option isn't
                                     used.""")
 
     parser.add_argument('-s', '--scale', metavar='W:H',
-                            help="""Filtergraph string passed to 
+                            help="""Filtergraph string passed to
                                     ffmpeg if encoding is done and scaling
-                                    is desired. 
-                                    Ignored if the --encode option isn't 
+                                    is desired.
+                                    Ignored if the --encode option isn't
                                     used.  Example: "--scale -1:720" will
                                     pass "-vf scale=-1:720" to ffmpeg,
                                     which will scale the height to 720 pixels
@@ -348,8 +348,16 @@ def get_options():
                                     aspect ratio.""")
 
     parser.add_argument('-t', '--thumbnails', action='store_true',
-                            help="""Create thumbnail for each video. 
+                            help="""Create thumbnail for each video.
                                     (Requires imagemagick)""")
+
+    parser.add_argument('-k', '--keep-timestamps', action='store_true',
+                            help="""Do not modify timestamps.
+                                    By default, this script modifies the
+                                    timestamps of imported files to match
+                                    the date/time the video was taken.
+                                    With this option, the timestamps are
+                                    left untouched.""")
 
     options = parser.parse_args()
     return options
